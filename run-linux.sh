@@ -70,3 +70,4 @@ mkdir -p coverage
 gcovr build/ --html-details --output coverage/index.html --xml coverage/cobertura.xml
 
 sudo cmake --install build
+
