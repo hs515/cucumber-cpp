@@ -105,6 +105,7 @@ public:
     step_id_type id;
     Regex regex;
     const std::string source;
+    const std::string stepDef;
 
 private:
     // Shut up MSVC warning C4512: assignment operator could not be generated

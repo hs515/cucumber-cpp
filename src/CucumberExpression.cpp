@@ -7,6 +7,8 @@
 namespace cucumber {
 namespace internal {
 
+namespace {
+
 /**
  * cukex::transform - Convert Cucumber Expression to Regex
  * 
@@ -34,21 +36,24 @@ namespace internal {
  * - {long}: same as {int}
  * - {} (anonymous): .*
  */
-
-// Built-in parameter types mapping
-static const std::map<std::string, std::string> PARAMETER_TYPES = {
-    {"int", "-?\\d+"},
-    {"float", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
-    {"word", "[^\\s]+"},
-    {"string", "\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"|'([^'\\\\]*(\\\\.[^'\\\\]*)*)'"},
-    {"bigdecimal", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
-    {"double", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
-    {"biginteger", "-?\\d+"},
-    {"byte", "-?\\d+"},
-    {"short", "-?\\d+"},
-    {"long", "-?\\d+"},
-    {"", ".*"}  // anonymous parameter type
-};
+const std::map<std::string, std::string>& getParameterTypes() {
+    // Built-in parameter types mapping
+    static const std::map<std::string, std::string> PARAMETER_TYPES = {
+        {"int", "-?\\d+"},
+        {"float", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
+        {"word", "[^\\s]+"},
+        {"string", "\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"|'([^'\\\\]*(\\\\.[^'\\\\]*)*)'"},
+        {"bigdecimal", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
+        {"double", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
+        {"biginteger", "-?\\d+"},
+        {"byte", "-?\\d+"},
+        {"short", "-?\\d+"},
+        {"long", "-?\\d+"},
+        {"", ".*"}  // anonymous parameter type
+    };
+    return PARAMETER_TYPES;
+}
+} // anonymous namespace
 
 class CucumberExpressionpressionParser {
 private:
@@ -90,11 +95,11 @@ public:
                 std::string paramType = expression.substr(pos + 1, closePos - pos - 1);
                 
                 // Validate and convert parameter type
-                if (PARAMETER_TYPES.find(paramType) == PARAMETER_TYPES.end()) {
+                if (getParameterTypes().find(paramType) == getParameterTypes().end()) {
                     throw UnknownParameterTypeException(paramType);
                 }
-                
-                result += "(" + PARAMETER_TYPES.at(paramType) + ")";
+
+                result += "(" + getParameterTypes().at(paramType) + ")";
                 pos = closePos + 1;
                 continue;
             }

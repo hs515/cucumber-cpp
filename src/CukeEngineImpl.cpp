@@ -26,7 +26,7 @@ std::vector<StepMatch> CukeEngineImpl::stepMatches(const std::string& name) cons
         StepMatch engineMatch;
         engineMatch.id = convertId(commandMatch.stepInfo->id);
         engineMatch.source = commandMatch.stepInfo->source;
-        engineMatch.regexp = commandMatch.stepInfo->regex.str();
+        engineMatch.regexp = commandMatch.stepInfo->stepDef;
         for (const RegexSubmatch& commandMatchArg : commandMatch.submatches) {
             StepMatchArg engineMatchArg;
             engineMatchArg.value = commandMatchArg.value;

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cucumber-cpp/internal/utils/CucumberExpression.hpp>
 #include <regex>
-
+#include <iostream>
 using namespace cucumber::internal;
 
 /**
@@ -186,6 +186,28 @@ TEST_F(CucumberExpressionpressionTransformationTest, AllParameterTypesTransforma
     std::string result = cukex::transform(
         "{int} {float} {word} {string} {bigdecimal} {double} {biginteger} {byte} {short} {long} {}"
     );
+    ValidateRegex(result);
+    // Just verify it compiles without error and is valid
+    EXPECT_TRUE(!result.empty());
+}
+
+// Test: A real-world step transformation
+TEST_F(CucumberExpressionpressionTransformationTest, CalcStepTransformation) {
+    std::string result = cukex::transform(
+        "I have entered an integer number {int} into the calculator"
+    );
+    std::cout << "Transformed regex: " << result << std::endl;
+    ValidateRegex(result);
+    // Just verify it compiles without error and is valid
+    EXPECT_TRUE(!result.empty());
+}
+
+// Test: A real-world step transformation
+TEST_F(CucumberExpressionpressionTransformationTest, CalcStepTransformation2) {
+    std::string result = cukex::transform(
+        "^I have entered an integer number 10 into the calculator$"
+    );
+    std::cout << "Transformed regex: " << result << std::endl;
     ValidateRegex(result);
     // Just verify it compiles without error and is valid
     EXPECT_TRUE(!result.empty());

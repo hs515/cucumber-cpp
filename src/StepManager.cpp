@@ -1,11 +1,34 @@
 #include "cucumber-cpp/internal/step/StepManager.hpp"
+#include "cucumber-cpp/internal/utils/CucumberExpression.hpp"
 
+#include <iostream>
 namespace cucumber {
 namespace internal {
 
+namespace {
+
+std::string getRegexString(const std::string& stepMatcher) {
+    std::string regexStr;
+    try {
+        std::regex testRegex(stepMatcher);
+        regexStr = stepMatcher;
+    } catch (const std::regex_error& e) {
+        try {
+            regexStr = cukex::transform(stepMatcher);
+        } catch (const std::exception& ex) {
+            std::cout << "Error: '" << stepMatcher
+                        << "' is neither a valid Regular Expression nor a Cucumber Expression." << std::endl;
+            throw;
+        }
+    }
+    return regexStr;
+}
+}
+
 StepInfo::StepInfo(const std::string& stepMatcher, const std::string source) :
-    regex(stepMatcher),
-    source(source) {
+    regex(getRegexString(stepMatcher)),
+    source(source),
+    stepDef(stepMatcher) {
     static step_id_type currentId = 0;
     id = ++currentId;
 }
