@@ -5,8 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace cucumber {
-namespace internal {
+namespace cucumber::internal {
 
 /**
  * Custom exception classes for Cucumber Expression parsing and validation errors
@@ -188,7 +187,6 @@ public:
     static std::string transform(const std::string& expression);
 };
 
-} // namespace internal
-} // namespace cucumber
+} // namespace cucumber::internal
 
 #endif // CUKE_CUCUMBER_EX_HPP_

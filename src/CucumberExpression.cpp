@@ -1,11 +1,11 @@
 #include <cucumber-cpp/internal/utils/CucumberExpression.hpp>
+
+#include <cctype>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
-#include <cctype>
 
-namespace cucumber {
-namespace internal {
+namespace cucumber::internal {
 
 namespace {
 
@@ -36,34 +36,42 @@ namespace {
  * - {long}: same as {int}
  * - {} (anonymous): .*
  */
-const std::map<std::string, std::string>& getParameterTypes() {
+const std::map<std::string, std::string, std::less<>>& getParameterTypes() {
     // Built-in parameter types mapping
-    static const std::map<std::string, std::string> PARAMETER_TYPES = {
-        {"int", "-?\\d+"},
-        {"float", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
-        {"word", "[^\\s]+"},
-        {"string", "\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"|'([^'\\\\]*(\\\\.[^'\\\\]*)*)'"},
-        {"bigdecimal", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
-        {"double", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
-        {"biginteger", "-?\\d+"},
-        {"byte", "-?\\d+"},
-        {"short", "-?\\d+"},
-        {"long", "-?\\d+"},
+    static const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
+        {"int",         R"(-?\d+)"},
+        {"float",       R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+        {"word",        R"([^\s]+)"},
+        {"string",      R"xyz("([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)')xyz"},  // because the raw string contains )", so use xyz as delimiter
+        {"bigdecimal",  R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+        {"double",      R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+        {"biginteger",  R"(-?\d+)"},
+        {"byte",        R"(-?\d+)"},
+        {"short",       R"(-?\d+)"},
+        {"long",        R"(-?\d+)"},
         {"", ".*"}  // anonymous parameter type
     };
     return PARAMETER_TYPES;
+}
+
+void validateRegex(const std::string& regex) {
+    try {
+        std::regex testRegex(regex);
+    } catch (const std::regex_error& e) {
+        throw CucumberExpressionpressionException("Failed to create valid regex: " + std::string(e.what()));
+    }
 }
 } // anonymous namespace
 
 class CucumberExpressionpressionParser {
 private:
     std::string expression;
-    size_t pos;
+    size_t pos = 0;
     
 public:
-    CucumberExpressionpressionParser(const std::string& expr) 
-        : expression(expr), pos(0) {}
-    
+    explicit CucumberExpressionpressionParser(const std::string& expr) :
+        expression(expr) {}
+
     std::string parse() {
         std::string result;
         
@@ -74,83 +82,26 @@ public:
             if (current == '\\' && pos + 1 < expression.length()) {
                 char next = expression[pos + 1];
                 if (next == '(' || next == ')' || next == '{' || next == '}' || next == '/') {
-                    // Output the escaped character for regex - manually escape special chars
-                    if (next == '{' || next == '}' || next == '(' || next == ')') {
-                        result += "\\";
-                    }
-                    result += next;
-                    pos += 2;
+                    parseEscaping(result);
                     continue;
                 }
             }
             
             // Handle parameter types {type}
             if (current == '{') {
-                size_t closePos = expression.find('}', pos);
-                if (closePos == std::string::npos) {
-                    throw UnclosedParameterException("Unclosed parameter type: missing '}' at position " + 
-                                           std::to_string(pos));
-                }
-                
-                std::string paramType = expression.substr(pos + 1, closePos - pos - 1);
-                
-                // Validate and convert parameter type
-                if (getParameterTypes().find(paramType) == getParameterTypes().end()) {
-                    throw UnknownParameterTypeException(paramType);
-                }
-
-                result += "(" + getParameterTypes().at(paramType) + ")";
-                pos = closePos + 1;
+                parseOpenBrace(result);
                 continue;
             }
             
             // Handle optional text (text)
             if (current == '(') {
-                size_t closePos = expression.find(')', pos);
-                if (closePos == std::string::npos) {
-                    throw UnclosedOptionalException("Unclosed optional text: missing ')' at position " + 
-                                           std::to_string(pos));
-                }
-                
-                std::string optionalContent = expression.substr(pos + 1, closePos - pos - 1);
-                
-                // Escape optional content
-                std::string escapedContent = escapeRegexChars(optionalContent);
-                result += "(?:" + escapedContent + ")?";
-                pos = closePos + 1;
+                parseOpenParenthesis(result);
                 continue;
             }
             
             // Handle alternatives - if we see a /, look back to find word boundaries
             if (current == '/') {
-                // Check if this is a word-level alternative (not a literal escape)
-                // Backtrack to find the word before the slash
-                size_t wordEnd = pos;
-                while (wordEnd > 0 && result.back() != ' ' && result.back() != ')' && 
-                       result.back() != ')') {
-                    wordEnd--;
-                }
-                
-                // For now, handle slash by looking ahead to collect all alternatives
-                std::vector<std::string> alternatives = collectAlternativesFromHere(pos - 1);
-                
-                if (alternatives.size() > 1) {
-                    // Remove the last word from result
-                    size_t lastSpace = result.rfind(' ');
-                    if (lastSpace != std::string::npos) {
-                        result = result.substr(0, lastSpace + 1);
-                    } else {
-                        result.clear();
-                    }
-                    
-                    // Add alternatives group
-                    result += "(?:";
-                    for (size_t i = 0; i < alternatives.size(); ++i) {
-                        if (i > 0) result += "|";
-                        result += escapeRegexChars(alternatives[i]);
-                    }
-                    result += ")";
-                }
+                parseAlternatives(result);
                 continue;
             }
             
@@ -224,8 +175,7 @@ private:
         return alternatives;
     }
     
-private:
-    std::string escapeRegexChars(const std::string& text) {
+    std::string escapeRegexChars(const std::string& text) const {
         std::string result;
         for (char c : text) {
             if (std::string(".^$|()[]{}*+?\\").find(c) != std::string::npos) {
@@ -234,6 +184,80 @@ private:
             result += c;
         }
         return result;
+    }
+
+    void parseEscaping(std::string& result) {
+        char next = expression[pos + 1];
+        // Output the escaped character for regex - manually escape special chars
+        if (next == '{' || next == '}' || next == '(' || next == ')') {
+            result += "\\";
+        }
+        result += next;
+        pos += 2;
+    }
+
+    void parseOpenBrace(std::string& result) {
+        size_t closePos = expression.find('}', pos);
+        if (closePos == std::string::npos) {
+            throw UnclosedParameterException("Unclosed parameter type: missing '}' at position " + 
+                                   std::to_string(pos));
+        }
+
+        std::string paramType = expression.substr(pos + 1, closePos - pos - 1);
+
+        // Validate and convert parameter type
+        if (getParameterTypes().find(paramType) == getParameterTypes().end()) {
+            throw UnknownParameterTypeException(paramType);
+        }
+
+        result += "(" + getParameterTypes().at(paramType) + ")";
+        pos = closePos + 1;
+    }
+
+    void parseOpenParenthesis(std::string& result) {
+        size_t closePos = expression.find(')', pos);
+        if (closePos == std::string::npos) {
+            throw UnclosedOptionalException("Unclosed optional text: missing ')' at position " + 
+                                   std::to_string(pos));
+        }
+
+        std::string optionalContent = expression.substr(pos + 1, closePos - pos - 1);
+
+        // Escape optional content
+        std::string escapedContent = escapeRegexChars(optionalContent);
+        result += "(?:" + escapedContent + ")?";
+        pos = closePos + 1;
+    }
+
+    void parseAlternatives(std::string& result) {
+        // Check if this is a word-level alternative (not a literal escape)
+        // Backtrack to find the word before the slash
+        size_t wordEnd = pos;
+        while (wordEnd > 0 && result.back() != ' ' && result.back() != ')' && 
+                result.back() != ')') {
+            wordEnd--;
+        }
+        
+        // For now, handle slash by looking ahead to collect all alternatives
+        std::vector<std::string> alternatives = collectAlternativesFromHere(pos - 1);
+        
+        if (alternatives.size() > 1) {
+            // Remove the last word from result
+            size_t lastSpace = result.rfind(' ');
+            if (lastSpace != std::string::npos) {
+                result = result.substr(0, lastSpace + 1);
+            } else {
+                result.clear();
+            }
+            
+            // Add alternatives group
+            result += "(?:";
+            for (size_t i = 0; i < alternatives.size(); ++i) {
+                if (i > 0) result += "|";
+                result += escapeRegexChars(alternatives[i]);
+            }
+            result += ")";
+        }
     }
 };
 
@@ -291,19 +315,13 @@ std::string cukex::transform(const std::string& expression) {
         
         // Add anchors to ensure full match
         regex = "^" + regex + "$";
-        
-        // Validate that the result is a valid regex by trying to compile it
-        try {
-            std::regex testRegex(regex);
-        } catch (const std::regex_error& e) {
-            throw CucumberExpressionpressionException("Failed to create valid regex: " + std::string(e.what()));
-        }
-        
+
+        // Validate that the result is a valid regex by trying to compile it. If invalid, throw exception.
+        validateRegex(regex);
         return regex;
     } catch (const std::exception& e) {
         throw CucumberExpressionpressionException(std::string("Invalid Cucumber expression: ") + e.what());
     }
 }
 
-} // namespace internal
-} // namespace cucumber
+} // namespace cucumber::internal

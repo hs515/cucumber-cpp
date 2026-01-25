@@ -7,19 +7,23 @@ namespace internal {
 
 namespace {
 
+std::string transformCucumberExpression(const std::string& expression) {
+    try {
+        return cukex::transform(expression);
+    } catch (const std::exception& ex) {
+        std::cout << "Error: '" << expression
+                    << "' is neither a valid Regular Expression nor a Cucumber Expression." << std::endl;
+        throw;
+    }
+}
+
 std::string getRegexString(const std::string& stepMatcher) {
     std::string regexStr;
     try {
         std::regex testRegex(stepMatcher);
         regexStr = stepMatcher;
     } catch (const std::regex_error& e) {
-        try {
-            regexStr = cukex::transform(stepMatcher);
-        } catch (const std::exception& ex) {
-            std::cout << "Error: '" << stepMatcher
-                        << "' is neither a valid Regular Expression nor a Cucumber Expression." << std::endl;
-            throw;
-        }
+        regexStr = transformCucumberExpression(stepMatcher);
     }
     return regexStr;
 }

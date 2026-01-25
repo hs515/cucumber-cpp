@@ -13,7 +13,7 @@ using namespace cucumber::internal;
  * They verify that Cucumber Expressions are correctly transformed into
  * regular expressions according to the official specification.
  */
-class CucumberExpressionpressionTransformationTest : public ::testing::Test {
+class CucumberExpressionTransformationTest : public ::testing::Test {
 protected:
     void ValidateRegex(const std::string& regex) {
         // Ensure the result is a valid regex by compiling it
@@ -37,14 +37,14 @@ protected:
 
 // Test: Simple text transformation
 // From: testdata/cucumber-expression/transformation/text.yaml
-TEST_F(CucumberExpressionpressionTransformationTest, SimpleText) {
+TEST_F(CucumberExpressionTransformationTest, SimpleText) {
     TestTransformation("a", "^a$");
 }
 
 // Test: Empty expression transformation
 // From: testdata/cucumber-expression/transformation/empty.yaml
 // Note: The implementation throws an exception for empty expressions
-TEST_F(CucumberExpressionpressionTransformationTest, EmptyExpression) {
+TEST_F(CucumberExpressionTransformationTest, EmptyExpression) {
     EXPECT_THROW(
         cukex::transform(""),
         std::invalid_argument
@@ -53,39 +53,39 @@ TEST_F(CucumberExpressionpressionTransformationTest, EmptyExpression) {
 
 // Test: Parameter type transformation
 // From: testdata/cucumber-expression/transformation/parameter.yaml
-TEST_F(CucumberExpressionpressionTransformationTest, ParameterType) {
+TEST_F(CucumberExpressionTransformationTest, ParameterType) {
     TestTransformation("{int}", "^(-?\\d+)$");
 }
 
 // Test: Optional text transformation
 // From: testdata/cucumber-expression/transformation/optional.yaml
-TEST_F(CucumberExpressionpressionTransformationTest, OptionalText) {
+TEST_F(CucumberExpressionTransformationTest, OptionalText) {
     TestTransformation("(a)", "^(?:a)?$");
 }
 
 // Test: Alternation transformation
 // From: testdata/cucumber-expression/transformation/alternation.yaml
-TEST_F(CucumberExpressionpressionTransformationTest, Alternation) {
+TEST_F(CucumberExpressionTransformationTest, Alternation) {
     TestTransformation("a/b c/d/e", "^(?:a|b) (?:c|d|e)$");
 }
 
 // Test: Alternation with optional text
 // From: testdata/cucumber-expression/transformation/alternation-with-optional.yaml
 // Note: The actual output applies optional to the entire alternation group, not just the second part
-TEST_F(CucumberExpressionpressionTransformationTest, AlternationWithOptional) {
+TEST_F(CucumberExpressionTransformationTest, AlternationWithOptional) {
     TestTransformation("a/b(c)", "^(?:a|b)(?:c)?$");
 }
 
 // Test: Regex special characters escaping
 // From: testdata/cucumber-expression/transformation/escape-regex-characters.yaml
 // Note: The `{}` in the expression is interpreted as a parameter type (anonymous), generating (.*)
-TEST_F(CucumberExpressionpressionTransformationTest, EscapeRegexCharacters) {
+TEST_F(CucumberExpressionTransformationTest, EscapeRegexCharacters) {
     TestTransformation("^$[]\\(\\){}\\\\.|?*+", "^\\^\\$\\[\\]\\(\\)(.*)\\\\\\\\\\.\\|\\?\\*\\+$");
 }
 
 // Test: Unicode text transformation
 // From: testdata/cucumber-expression/transformation/unicode.yaml
-TEST_F(CucumberExpressionpressionTransformationTest, UnicodeText) {
+TEST_F(CucumberExpressionTransformationTest, UnicodeText) {
     TestTransformation("Привет, Мир(ы)!", "^Привет, Мир(?:ы)?!$");
 }
 
@@ -93,7 +93,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, UnicodeText) {
 
 // Test: Complex expression with mixed features
 // Note: Parameters within alternatives may not work as expected
-TEST_F(CucumberExpressionpressionTransformationTest, ComplexMixedExpression) {
+TEST_F(CucumberExpressionTransformationTest, ComplexMixedExpression) {
     TestTransformation(
         "I have {int} item(s) in word/container",
         "^I have (-?\\d+) item(?:s)? in (?:word|container)$"
@@ -101,7 +101,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, ComplexMixedExpression) {
 }
 
 // Test: Multiple parameters
-TEST_F(CucumberExpressionpressionTransformationTest, MultipleParameters) {
+TEST_F(CucumberExpressionTransformationTest, MultipleParameters) {
     TestTransformation(
         "{int} {word} {float}",
         "^(-?\\d+) ([^\\s]+) ((?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?)$"
@@ -110,7 +110,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, MultipleParameters) {
 
 // Test: Escaped characters
 // Note: Escaped forward slash becomes a literal forward slash (not escaped in regex)
-TEST_F(CucumberExpressionpressionTransformationTest, EscapedCharacters) {
+TEST_F(CucumberExpressionTransformationTest, EscapedCharacters) {
     TestTransformation(
         "test \\( \\{ \\/ escaped",
         "^test \\( \\{ / escaped$"
@@ -118,7 +118,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, EscapedCharacters) {
 }
 
 // Test: String parameter type
-TEST_F(CucumberExpressionpressionTransformationTest, StringParameterType) {
+TEST_F(CucumberExpressionTransformationTest, StringParameterType) {
     TestTransformation(
         "I say {string}",
         "^I say (\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"|'([^'\\\\]*(\\\\.[^'\\\\]*)*)')$"
@@ -126,7 +126,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, StringParameterType) {
 }
 
 // Test: Optional with parameters
-TEST_F(CucumberExpressionpressionTransformationTest, OptionalWithParameters) {
+TEST_F(CucumberExpressionTransformationTest, OptionalWithParameters) {
     TestTransformation(
         "I have {int} apple(s)",
         "^I have (-?\\d+) apple(?:s)?$"
@@ -134,7 +134,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, OptionalWithParameters) {
 }
 
 // Test: Alternation at different positions
-TEST_F(CucumberExpressionpressionTransformationTest, AlternationPositions) {
+TEST_F(CucumberExpressionTransformationTest, AlternationPositions) {
     TestTransformation(
         "go to kitchen/bedroom for {word}",
         "^go to (?:kitchen|bedroom) for ([^\\s]+)$"
@@ -142,7 +142,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, AlternationPositions) {
 }
 
 // Test: Multiple alternatives in one expression
-TEST_F(CucumberExpressionpressionTransformationTest, MultipleAlternations) {
+TEST_F(CucumberExpressionTransformationTest, MultipleAlternations) {
     TestTransformation(
         "cat/dog eat(s) fish/meat",
         "^(?:cat|dog) eat(?:s)? (?:fish|meat)$"
@@ -150,7 +150,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, MultipleAlternations) {
 }
 
 // Test: Anonymous parameter type
-TEST_F(CucumberExpressionpressionTransformationTest, AnonymousParameter) {
+TEST_F(CucumberExpressionTransformationTest, AnonymousParameter) {
     TestTransformation(
         "match {}",
         "^match (.*)$"
@@ -158,7 +158,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, AnonymousParameter) {
 }
 
 // Test: Whitespace handling
-TEST_F(CucumberExpressionpressionTransformationTest, WhitespacePreserved) {
+TEST_F(CucumberExpressionTransformationTest, WhitespacePreserved) {
     TestTransformation(
         "multiple  spaces  here",
         "^multiple  spaces  here$"
@@ -166,7 +166,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, WhitespacePreserved) {
 }
 
 // Test: Brackets in literal text
-TEST_F(CucumberExpressionpressionTransformationTest, BracketsInLiterals) {
+TEST_F(CucumberExpressionTransformationTest, BracketsInLiterals) {
     TestTransformation(
         "array [0]",
         "^array \\[0\\]$"
@@ -174,7 +174,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, BracketsInLiterals) {
 }
 
 // Test: Pipe character (not in alternation context)
-TEST_F(CucumberExpressionpressionTransformationTest, PipeInLiterals) {
+TEST_F(CucumberExpressionTransformationTest, PipeInLiterals) {
     TestTransformation(
         "a | b",
         "^a \\| b$"
@@ -182,7 +182,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, PipeInLiterals) {
 }
 
 // Test: All built-in parameter types in one expression
-TEST_F(CucumberExpressionpressionTransformationTest, AllParameterTypesTransformation) {
+TEST_F(CucumberExpressionTransformationTest, AllParameterTypesTransformation) {
     std::string result = cukex::transform(
         "{int} {float} {word} {string} {bigdecimal} {double} {biginteger} {byte} {short} {long} {}"
     );
@@ -192,7 +192,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, AllParameterTypesTransforma
 }
 
 // Test: A real-world step transformation
-TEST_F(CucumberExpressionpressionTransformationTest, CalcStepTransformation) {
+TEST_F(CucumberExpressionTransformationTest, CalcStepTransformation) {
     std::string result = cukex::transform(
         "I have entered an integer number {int} into the calculator"
     );
@@ -203,7 +203,7 @@ TEST_F(CucumberExpressionpressionTransformationTest, CalcStepTransformation) {
 }
 
 // Test: A real-world step transformation
-TEST_F(CucumberExpressionpressionTransformationTest, CalcStepTransformation2) {
+TEST_F(CucumberExpressionTransformationTest, CalcStepTransformation2) {
     std::string result = cukex::transform(
         "^I have entered an integer number 10 into the calculator$"
     );
