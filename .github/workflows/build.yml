@@ -1,0 +1,55 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+
+      - name: Install Build Wrapper
+        uses: SonarSource/sonarqube-scan-action/install-build-wrapper@v6
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtest-dev -libgmock-dev
+
+      - name: Run Build Wrapper
+        run: |
+          mkdir build
+          cmake -S . -B build -DCUKE_ENABLE_GTEST=ON -DCUKE_TESTS_UNIT=ON -DCUKE_CODE_COVERAGE=ON
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build build/
+
+      - name: Run Tests
+        run: |
+          cd build/tests
+          ctest --verbose
+
+      - name: Generate coverage reports with gcov
+        run: |
+          find build -name "*.gcda" -type f -exec gcov -p {} \;
+          # Move all .gcov files to build directory where SonarQube looks for them
+          find . -maxdepth 1 -name "*.gcov" -type f -exec mv {} build/ \;
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            --define "sonar.cfamily.compile-commands=${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json"
+
+            
