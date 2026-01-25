@@ -1,0 +1,304 @@
+#include <cucumber-cpp/internal/utils/CucumberExpression.hpp>
+#include <regex>
+#include <sstream>
+#include <stdexcept>
+#include <cctype>
+
+namespace cucumber {
+namespace internal {
+
+/**
+ * cukex::transform - Convert Cucumber Expression to Regex
+ * 
+ * References:
+ * - https://github.com/cucumber/cucumber-expressions#readme
+ * - https://cucumber.github.io/try-cucumber-expressions/?advanced=1
+ * 
+ * Cucumber Expressions support:
+ * - Parameter types: {int}, {float}, {word}, {string}, {bigdecimal}, {double},
+ *   {biginteger}, {byte}, {short}, {long}, {} (anonymous)
+ * - Optional text: (text)
+ * - Alternative text: text1/text2 (no whitespace between parts)
+ * - Escaping: \( \{ \/ to match literal characters
+ * 
+ * Built-in parameter type regexes:
+ * - {int}: -?\d+
+ * - {float}: (?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?
+ * - {word}: [^\s]+
+ * - {string}: "([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)'
+ * - {bigdecimal}: same as {float}
+ * - {double}: same as {float}
+ * - {biginteger}: same as {int}
+ * - {byte}: same as {int}
+ * - {short}: same as {int}
+ * - {long}: same as {int}
+ * - {} (anonymous): .*
+ */
+
+// Built-in parameter types mapping
+static const std::map<std::string, std::string> PARAMETER_TYPES = {
+    {"int", "-?\\d+"},
+    {"float", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
+    {"word", "[^\\s]+"},
+    {"string", "\"([^\"\\\\]*(\\\\.[^\"\\\\]*)*)\"|'([^'\\\\]*(\\\\.[^'\\\\]*)*)'"},
+    {"bigdecimal", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
+    {"double", "(?=.*\\d.*)[-+]?\\d*(?:\\.(?=\\d.*))?\\d*(?:\\d+[E][+-]?\\d+)?"},
+    {"biginteger", "-?\\d+"},
+    {"byte", "-?\\d+"},
+    {"short", "-?\\d+"},
+    {"long", "-?\\d+"},
+    {"", ".*"}  // anonymous parameter type
+};
+
+class CucumberExpressionpressionParser {
+private:
+    std::string expression;
+    size_t pos;
+    
+public:
+    CucumberExpressionpressionParser(const std::string& expr) 
+        : expression(expr), pos(0) {}
+    
+    std::string parse() {
+        std::string result;
+        
+        while (pos < expression.length()) {
+            char current = expression[pos];
+            
+            // Handle escaping - \( \) \{ \} \/
+            if (current == '\\' && pos + 1 < expression.length()) {
+                char next = expression[pos + 1];
+                if (next == '(' || next == ')' || next == '{' || next == '}' || next == '/') {
+                    // Output the escaped character for regex - manually escape special chars
+                    if (next == '{' || next == '}' || next == '(' || next == ')') {
+                        result += "\\";
+                    }
+                    result += next;
+                    pos += 2;
+                    continue;
+                }
+            }
+            
+            // Handle parameter types {type}
+            if (current == '{') {
+                size_t closePos = expression.find('}', pos);
+                if (closePos == std::string::npos) {
+                    throw UnclosedParameterException("Unclosed parameter type: missing '}' at position " + 
+                                           std::to_string(pos));
+                }
+                
+                std::string paramType = expression.substr(pos + 1, closePos - pos - 1);
+                
+                // Validate and convert parameter type
+                if (PARAMETER_TYPES.find(paramType) == PARAMETER_TYPES.end()) {
+                    throw UnknownParameterTypeException(paramType);
+                }
+                
+                result += "(" + PARAMETER_TYPES.at(paramType) + ")";
+                pos = closePos + 1;
+                continue;
+            }
+            
+            // Handle optional text (text)
+            if (current == '(') {
+                size_t closePos = expression.find(')', pos);
+                if (closePos == std::string::npos) {
+                    throw UnclosedOptionalException("Unclosed optional text: missing ')' at position " + 
+                                           std::to_string(pos));
+                }
+                
+                std::string optionalContent = expression.substr(pos + 1, closePos - pos - 1);
+                
+                // Escape optional content
+                std::string escapedContent = escapeRegexChars(optionalContent);
+                result += "(?:" + escapedContent + ")?";
+                pos = closePos + 1;
+                continue;
+            }
+            
+            // Handle alternatives - if we see a /, look back to find word boundaries
+            if (current == '/') {
+                // Check if this is a word-level alternative (not a literal escape)
+                // Backtrack to find the word before the slash
+                size_t wordEnd = pos;
+                while (wordEnd > 0 && result.back() != ' ' && result.back() != ')' && 
+                       result.back() != ')') {
+                    wordEnd--;
+                }
+                
+                // For now, handle slash by looking ahead to collect all alternatives
+                std::vector<std::string> alternatives = collectAlternativesFromHere(pos - 1);
+                
+                if (alternatives.size() > 1) {
+                    // Remove the last word from result
+                    size_t lastSpace = result.rfind(' ');
+                    if (lastSpace != std::string::npos) {
+                        result = result.substr(0, lastSpace + 1);
+                    } else {
+                        result.clear();
+                    }
+                    
+                    // Add alternatives group
+                    result += "(?:";
+                    for (size_t i = 0; i < alternatives.size(); ++i) {
+                        if (i > 0) result += "|";
+                        result += escapeRegexChars(alternatives[i]);
+                    }
+                    result += ")";
+                }
+                continue;
+            }
+            
+            // Regular character - escape regex special characters if needed
+            if (std::string(".^$|()[]{}*+?\\").find(current) != std::string::npos) {
+                result += "\\";
+                result += current;
+            } else {
+                result += current;
+            }
+            pos++;
+        }
+        
+        return result;
+    }
+    
+private:
+    // Collect words separated by / starting from the position before first /
+    std::vector<std::string> collectAlternativesFromHere(size_t startPos) {
+        std::vector<std::string> alternatives;
+        size_t i = startPos;
+        std::string current;
+        
+        // First, backtrack to get the word before the first /
+        while (expression[i] != ' ' && expression[i] != '(' &&  
+               expression[i] != '{' && expression[i] != ')') {
+            current = expression[i] + current;
+            if (i == 0) break;
+            i--;
+        }
+        
+        // Now collect forward from startPos to get all alternatives
+        std::string allWords = current;
+        size_t fwdPos = startPos + 1;
+        
+        while (fwdPos < expression.length()) {
+            char c = expression[fwdPos];
+            
+            // Stop at boundaries
+            if (c == ' ' || c == '{' || c == '(') {
+                break;
+            }
+            
+            // Handle escaped slash
+            if (c == '\\' && fwdPos + 1 < expression.length() && expression[fwdPos + 1] == '/') {
+                allWords += '/';
+                fwdPos += 2;
+                continue;
+            }
+            
+            // Unescaped slash is separator
+            if (c == '/') {
+                // Save current word
+                if (!current.empty()) {
+                    alternatives.push_back(current);
+                    current.clear();
+                }
+                fwdPos++;
+                continue;
+            }
+            
+            current += c;
+            fwdPos++;
+        }
+        
+        if (!current.empty()) {
+            alternatives.push_back(current);
+        }
+        
+        pos = fwdPos;
+        return alternatives;
+    }
+    
+private:
+    std::string escapeRegexChars(const std::string& text) {
+        std::string result;
+        for (char c : text) {
+            if (std::string(".^$|()[]{}*+?\\").find(c) != std::string::npos) {
+                result += "\\";
+            }
+            result += c;
+        }
+        return result;
+    }
+};
+
+std::string cukex::transform(const std::string& expression) {
+    if (expression.empty()) {
+        throw EmptyExpressionException();
+    }
+    
+    // Validate that the expression is well-formed
+    int braceDepth = 0;
+    int parenDepth = 0;
+    
+    for (size_t i = 0; i < expression.length(); ++i) {
+        char c = expression[i];
+        
+        // Check for unescaped opening/closing braces and parentheses
+        if (i > 0 && expression[i - 1] == '\\') {
+            continue; // Skip escaped characters
+        }
+        
+        if (c == '{') {
+            braceDepth++;
+            if (braceDepth > 1) {
+                throw CucumberExpressionpressionException("Nested parameter types are not allowed");
+            }
+        } else if (c == '}') {
+            braceDepth--;
+            if (braceDepth < 0) {
+                throw UnmatchedClosingBraceException();
+            }
+        } else if (c == '(') {
+            parenDepth++;
+        } else if (c == ')') {
+            parenDepth--;
+            if (parenDepth < 0) {
+                throw UnmatchedClosingParenthesisException();
+            }
+        }
+    }
+    
+    if (braceDepth != 0) {
+        throw UnclosedParameterException("Unclosed parameter type: unmatched braces");
+    }
+    if (parenDepth != 0) {
+        throw UnclosedOptionalException("Unclosed optional text: unmatched parentheses");
+    }
+    
+    // Preprocess to convert alternatives
+    std::string processedExpression = expression;
+    
+    // Parse and convert
+    try {
+        CucumberExpressionpressionParser parser(processedExpression);
+        std::string regex = parser.parse();
+        
+        // Add anchors to ensure full match
+        regex = "^" + regex + "$";
+        
+        // Validate that the result is a valid regex by trying to compile it
+        try {
+            std::regex testRegex(regex);
+        } catch (const std::regex_error& e) {
+            throw CucumberExpressionpressionException("Failed to create valid regex: " + std::string(e.what()));
+        }
+        
+        return regex;
+    } catch (const std::exception& e) {
+        throw CucumberExpressionpressionException(std::string("Invalid Cucumber expression: ") + e.what());
+    }
+}
+
+} // namespace internal
+} // namespace cucumber

@@ -1,13 +1,13 @@
 include(GenerateExportHeader)
 
 find_package(nlohmann_json 3.10.5 REQUIRED)
-find_package(Asio REQUIRED)
-find_package(TCLAP REQUIRED)
+
 include(../cmake/modules/GitVersion.cmake)
 
 set(CUKE_SOURCES
     drivers/GenericDriver.cpp
     ContextManager.cpp
+    CucumberExpression.cpp
     CukeCommands.cpp
     CukeEngine.cpp
     CukeEngineImpl.cpp
@@ -17,7 +17,6 @@ set(CUKE_SOURCES
     Scenario.cpp
     Table.cpp
     Tag.cpp
-    connectors/wire/WireServer.cpp
     connectors/wire/WireProtocol.cpp
     connectors/wire/WireProtocolCommands.cpp
     )
@@ -56,7 +55,6 @@ set(CUKE_HEADERS
     ../include/cucumber-cpp/internal/connectors/wire/ProtocolHandler.hpp
     ../include/cucumber-cpp/internal/connectors/wire/WireProtocol.hpp
     ../include/cucumber-cpp/internal/connectors/wire/WireProtocolCommands.hpp
-    ../include/cucumber-cpp/internal/connectors/wire/WireServer.hpp
     ../include/cucumber-cpp/internal/defs.hpp
     ../include/cucumber-cpp/internal/drivers/BoostDriver.hpp
     ../include/cucumber-cpp/internal/drivers/DriverSelector.hpp
@@ -68,6 +66,7 @@ set(CUKE_HEADERS
     ../include/cucumber-cpp/internal/hook/Tag.hpp
     ../include/cucumber-cpp/internal/step/StepMacros.hpp
     ../include/cucumber-cpp/internal/step/StepManager.hpp
+    ../include/cucumber-cpp/internal/utils/CucumberExpression.hpp
     ../include/cucumber-cpp/internal/utils/IndexSequence.hpp
     ../include/cucumber-cpp/internal/utils/Regex.hpp
 )
@@ -79,13 +78,11 @@ list(APPEND CUKE_SOURCES ${CUKE_HEADERS})
 # Library for unit tests relying on internals
 add_library(cucumber-cpp-internal STATIC ${CUKE_SOURCES})
 
-add_library(cucumber-cpp-nomain ${CUKE_SOURCES})
-add_library(cucumber-cpp ${CUKE_SOURCES} main.cpp)
+add_library(cucumber-cpp ${CUKE_SOURCES})
 
 set_target_properties(
     cucumber-cpp-internal
     cucumber-cpp
-    cucumber-cpp-nomain
     PROPERTIES
         DEFINE_SYMBOL cucumber_cpp_EXPORTS
         CXX_VISIBILITY_PRESET hidden
@@ -98,15 +95,12 @@ generate_export_header(cucumber-cpp
 
 foreach(TARGET
         cucumber-cpp-internal
-        cucumber-cpp-nomain
-        cucumber-cpp
+	cucumber-cpp
 )
     target_include_directories(${TARGET}
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<BUILD_INTERFACE:${CUKE_INCLUDE_DIR}>
-            $<BUILD_INTERFACE:${ASIO_INCLUDE_DIR}>
-            $<BUILD_INTERFACE:${TCLAP_INCLUDE_DIR}>
             $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
     )
     target_link_libraries(${TARGET}
@@ -142,8 +136,7 @@ install(
 )
 install(
     TARGETS
-        cucumber-cpp-nomain
-        cucumber-cpp
+	cucumber-cpp
     EXPORT   CucumberCpp
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
