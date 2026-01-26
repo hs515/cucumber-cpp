@@ -36,23 +36,20 @@ namespace {
  * - {long}: same as {int}
  * - {} (anonymous): .*
  */
-const std::map<std::string, std::string, std::less<>>& getParameterTypes() {
-    // Built-in parameter types mapping
-    static const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
-        {"int",         R"(-?\d+)"},
-        {"float",       R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
-        {"word",        R"([^\s]+)"},
-        {"string",      R"xyz("([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)')xyz"},  // because the raw string contains )", so use xyz as delimiter
-        {"bigdecimal",  R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
-        {"double",      R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
-        {"biginteger",  R"(-?\d+)"},
-        {"byte",        R"(-?\d+)"},
-        {"short",       R"(-?\d+)"},
-        {"long",        R"(-?\d+)"},
-        {"", ".*"}  // anonymous parameter type
-    };
-    return PARAMETER_TYPES;
-}
+// Built-in parameter types mapping
+inline const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
+    {"int",         R"(-?\d+)"},
+    {"float",       R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+    {"word",        R"([^\s]+)"},
+    {"string",      R"xyz("([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)')xyz"},  // because the raw string contains )", so use xyz as delimiter
+    {"bigdecimal",  R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+    {"double",      R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+    {"biginteger",  R"(-?\d+)"},
+    {"byte",        R"(-?\d+)"},
+    {"short",       R"(-?\d+)"},
+    {"long",        R"(-?\d+)"},
+    {"", ".*"}  // anonymous parameter type
+};
 
 void validateRegex(const std::string& regex) {
     try {
@@ -206,11 +203,11 @@ private:
         std::string paramType = expression.substr(pos + 1, closePos - pos - 1);
 
         // Validate and convert parameter type
-        if (getParameterTypes().find(paramType) == getParameterTypes().end()) {
+        if (PARAMETER_TYPES.find(paramType) == PARAMETER_TYPES.end()) {
             throw UnknownParameterTypeException(paramType);
         }
 
-        result += "(" + getParameterTypes().at(paramType) + ")";
+        result += "(" + PARAMETER_TYPES.at(paramType) + ")";
         pos = closePos + 1;
     }
 
@@ -243,8 +240,7 @@ private:
         
         if (alternatives.size() > 1) {
             // Remove the last word from result
-            size_t lastSpace = result.rfind(' ');
-            if (lastSpace != std::string::npos) {
+            if (size_t lastSpace = result.rfind(' '); lastSpace != std::string::npos) {
                 result = result.substr(0, lastSpace + 1);
             } else {
                 result.clear();

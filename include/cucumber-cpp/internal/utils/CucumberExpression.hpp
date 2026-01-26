@@ -15,9 +15,7 @@ namespace cucumber::internal {
  * Base exception for all Cucumber Expression errors
  */
 class CucumberExpressionpressionException : public std::invalid_argument {
-public:
-    explicit CucumberExpressionpressionException(const std::string& message)
-        : std::invalid_argument(message) {}
+    using std::invalid_argument::invalid_argument;
 };
 
 /**
@@ -39,18 +37,14 @@ private:
  * Thrown when braces/parameter types are not properly closed
  */
 class UnclosedParameterException : public CucumberExpressionpressionException {
-public:
-    explicit UnclosedParameterException(const std::string& message = "Unclosed parameter type: missing '}'")
-        : CucumberExpressionpressionException(message) {}
+    using CucumberExpressionpressionException::CucumberExpressionpressionException;
 };
 
 /**
  * Thrown when parentheses/optional text are not properly closed
  */
 class UnclosedOptionalException : public CucumberExpressionpressionException {
-public:
-    explicit UnclosedOptionalException(const std::string& message = "Unclosed optional text: missing ')'")
-        : CucumberExpressionpressionException(message) {}
+    using CucumberExpressionpressionException::CucumberExpressionpressionException;
 };
 
 /**
