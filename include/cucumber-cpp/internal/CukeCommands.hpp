@@ -26,7 +26,7 @@ public:
 
     void beginScenario(const TagExpression::tag_list& tags = TagExpression::tag_list());
     void endScenario();
-    const std::string snippetText(const std::string stepKeyword, const std::string stepName) const;
+    const std::string snippetText(const std::string stepKeyword, const std::string stepName, const std::string multilineArgClass = "") const;
     MatchResult stepMatches(const std::string description) const;
     InvokeResult invoke(step_id_type id, const InvokeArgs* pArgs);
 

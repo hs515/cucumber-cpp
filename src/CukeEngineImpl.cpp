@@ -90,9 +90,9 @@ void CukeEngineImpl::endScenario(const tags_type& /*tags*/) {
 }
 
 std::string CukeEngineImpl::snippetText(
-    const std::string& keyword, const std::string& name, const std::string& /*multilineArgClass*/
+    const std::string& keyword, const std::string& name, const std::string& multilineArgClass
 ) const {
-    return cukeCommands.snippetText(keyword, name);
+    return cukeCommands.snippetText(keyword, name, multilineArgClass);
 }
 
 }

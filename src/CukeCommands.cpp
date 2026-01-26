@@ -35,15 +35,22 @@ void CukeCommands::endScenario() {
 }
 
 const std::string CukeCommands::snippetText(
-    const std::string stepKeyword, const std::string stepName
+    const std::string stepKeyword, const std::string stepName, const std::string multilineArgClass
 ) const {
     std::stringstream text;
     std::string stepKeywordUpperCase;
     std::transform(
         stepKeyword.begin(), stepKeyword.end(), std::back_inserter(stepKeywordUpperCase), ::toupper
     );
+    std::string multilineArgComment;
+    if (multilineArgClass == "DataTable") {
+        multilineArgComment = "    TABLE_PARAM(data_table);\n";
+    } else if (multilineArgClass == "DocString") {
+        multilineArgComment = "    REGEX_PARAM(std::string, doc_string);\n";
+    }
     text << stepKeywordUpperCase << "(\"" << escapeCString("^" + escapeRegex(stepName) + "$")
          << "\") {\n"
+         << multilineArgComment
          << "    pending();\n"
          << "}\n";
     return text.str();
