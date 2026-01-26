@@ -36,20 +36,23 @@ namespace {
  * - {long}: same as {int}
  * - {} (anonymous): .*
  */
-// Built-in parameter types mapping
-inline const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
-    {"int",         R"(-?\d+)"},
-    {"float",       R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
-    {"word",        R"([^\s]+)"},
-    {"string",      R"xyz("([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)')xyz"},  // because the raw string contains )", so use xyz as delimiter
-    {"bigdecimal",  R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
-    {"double",      R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
-    {"biginteger",  R"(-?\d+)"},
-    {"byte",        R"(-?\d+)"},
-    {"short",       R"(-?\d+)"},
-    {"long",        R"(-?\d+)"},
-    {"", ".*"}  // anonymous parameter type
-};
+inline const std::map<std::string, std::string, std::less<>>& getParameterTypes() {
+    // Built-in parameter types mapping
+    static const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
+        {"int",         R"(-?\d+)"},
+        {"float",       R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+        {"word",        R"([^\s]+)"},
+        {"string",      R"xyz("([^"\\]*(\\.[^"\\]*)*)"|'([^'\\]*(\\.[^'\\]*)*)')xyz"},  // because the raw string contains )", so use xyz as delimiter
+        {"bigdecimal",  R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+        {"double",      R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
+        {"biginteger",  R"(-?\d+)"},
+        {"byte",        R"(-?\d+)"},
+        {"short",       R"(-?\d+)"},
+        {"long",        R"(-?\d+)"},
+        {"", ".*"}  // anonymous parameter type
+    };
+    return PARAMETER_TYPES;
+}
 
 void validateRegex(const std::string& regex) {
     try {
@@ -203,11 +206,11 @@ private:
         std::string paramType = expression.substr(pos + 1, closePos - pos - 1);
 
         // Validate and convert parameter type
-        if (PARAMETER_TYPES.find(paramType) == PARAMETER_TYPES.end()) {
+        if (getParameterTypes().find(paramType) == getParameterTypes().end()) {
             throw UnknownParameterTypeException(paramType);
         }
 
-        result += "(" + PARAMETER_TYPES.at(paramType) + ")";
+        result += "(" + getParameterTypes().at(paramType) + ")";
         pos = closePos + 1;
     }
 
