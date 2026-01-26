@@ -23,7 +23,7 @@ class CucumberExpressionpressionException : public std::invalid_argument {
  */
 class UnknownParameterTypeException : public CucumberExpressionpressionException {
 public:
-    UnknownParameterTypeException(const std::string& paramType)
+    explicit UnknownParameterTypeException(const std::string& paramType)
         : CucumberExpressionpressionException("Unknown parameter type: {" + paramType + "}"),
           paramType_(paramType) {}
     
