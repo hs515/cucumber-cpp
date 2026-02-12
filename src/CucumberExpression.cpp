@@ -126,23 +126,71 @@ private:
         std::string current;
         
         // First, backtrack to get the word before the first /
-        while (expression[i] != ' ' && expression[i] != '(' &&  
-               expression[i] != '{' && expression[i] != ')') {
-            current = expression[i] + current;
+        while (expression[i] != ' ' && expression[i] != '{') {
+            char c = expression[i];
+            // If we hit a closing paren, include the entire parenthesized expression
+            if (c == ')') {
+                // Find the matching opening paren
+                int depth = 1;
+                current = c + current;
+                if (i == 0) break;
+                i--;
+                while (i >= 0 && depth > 0) {
+                    char pc = expression[i];
+                    current = pc + current;
+                    if (pc == ')') depth++;
+                    if (pc == '(') depth--;
+                    if (i == 0) break;
+                    i--;
+                }
+                continue;
+            }
+            // Stop backtracking at opening paren (without including it)
+            if (c == '(') {
+                break;
+            }
+            current = c + current;
             if (i == 0) break;
             i--;
         }
         
         // Now collect forward from startPos to get all alternatives
-        std::string allWords = current;
+        // Add the first alternative (from backtracking)
+        if (!current.empty()) {
+            alternatives.push_back(current);
+            current.clear();
+        }
+        
+        std::string allWords;
         size_t fwdPos = startPos + 1;
         
         while (fwdPos < expression.length()) {
             char c = expression[fwdPos];
             
             // Stop at boundaries
-            if (c == ' ' || c == '{' || c == '(') {
+            if (c == ' ' || c == '{') {
                 break;
+            }
+            
+            // If we hit '(' right after a slash (current is empty), it's outside the alternation
+            if (c == '(' && current.empty()) {
+                break;
+            }
+            
+            // If we hit '(', include everything up to the matching ')' as part of the alternative
+            if (c == '(') {
+                size_t parenEnd = expression.find(')', fwdPos);
+                if (parenEnd != std::string::npos) {
+                    // Include parentheses and contents
+                    while (fwdPos <= parenEnd) {
+                        current += expression[fwdPos];
+                        fwdPos++;
+                    }
+                    continue;
+                }
+                current += c;
+                fwdPos++;
+                continue;
             }
             
             // Handle escaped slash
@@ -186,6 +234,41 @@ private:
         return result;
     }
 
+    // Parse a single alternative text to handle optional content
+    std::string parseAlternativeText(const std::string& text) const {
+        std::string result;
+        size_t i = 0;
+        
+        while (i < text.length()) {
+            char c = text[i];
+            
+            // Handle optional text (text)
+            if (c == '(') {
+                size_t closePos = text.find(')', i);
+                if (closePos != std::string::npos) {
+                    std::string optionalContent = text.substr(i + 1, closePos - i - 1);
+                    // Validate that optional content is not empty
+                    if (optionalContent.empty()) {
+                        throw CucumberExpressionpressionException("Empty optional text is not allowed");
+                    }
+                    std::string escapedContent = escapeRegexChars(optionalContent);
+                    result += "(?:" + escapedContent + ")?";
+                    i = closePos + 1;
+                    continue;
+                }
+            }
+            
+            // Escape regex special characters
+            if (std::string(".^$|()[]{}*+?\\").find(c) != std::string::npos) {
+                result += "\\";
+            }
+            result += c;
+            i++;
+        }
+        
+        return result;
+    }
+
     void parseEscaping(std::string& result) {
         char next = expression[pos + 1];
         // Output the escaped character for regex - manually escape special chars
@@ -223,6 +306,12 @@ private:
 
         std::string optionalContent = expression.substr(pos + 1, closePos - pos - 1);
 
+        // Validate that optional content is not empty
+        if (optionalContent.empty()) {
+            throw CucumberExpressionpressionException("Empty optional text is not allowed at position " + 
+                                   std::to_string(pos));
+        }
+
         // Escape optional content
         std::string escapedContent = escapeRegexChars(optionalContent);
         result += "(?:" + escapedContent + ")?";
@@ -253,7 +342,7 @@ private:
             result += "(?:";
             for (size_t i = 0; i < alternatives.size(); ++i) {
                 if (i > 0) result += "|";
-                result += escapeRegexChars(alternatives[i]);
+                result += parseAlternativeText(alternatives[i]);
             }
             result += ")";
         }

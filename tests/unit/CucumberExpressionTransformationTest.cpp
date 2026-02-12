@@ -71,9 +71,9 @@ TEST_F(CucumberExpressionTransformationTest, Alternation) {
 
 // Test: Alternation with optional text
 // From: testdata/cucumber-expression/transformation/alternation-with-optional.yaml
-// Note: The actual output applies optional to the entire alternation group, not just the second part
+// Note: With the support for optional in alternatives, b(c) is now treated as one alternative
 TEST_F(CucumberExpressionTransformationTest, AlternationWithOptional) {
-    TestTransformation("a/b(c)", "^(?:a|b)(?:c)?$");
+    TestTransformation("a/b(c)", "^(?:a|b(?:c)?)$");
 }
 
 // Test: Regex special characters escaping
@@ -178,6 +178,46 @@ TEST_F(CucumberExpressionTransformationTest, PipeInLiterals) {
     TestTransformation(
         "a | b",
         "^a \\| b$"
+    );
+}
+
+// Test: Optional in alternations
+TEST_F(CucumberExpressionTransformationTest, OptionalInAlternations) {
+    TestTransformation(
+        "rat(s)/mouse/mice",
+        "^(?:rat(?:s)?|mouse|mice)$"
+    );
+}
+
+// Test: Optional in alternations with different order
+TEST_F(CucumberExpressionTransformationTest, OptionalInAlternationsDifferentOrder) {
+    TestTransformation(
+        "mouse/mice/rat(s)",
+        "^(?:mouse|mice|rat(?:s)?)$"
+    );
+}
+
+// Test: Optional in alternations with different order
+TEST_F(CucumberExpressionTransformationTest, OptionalInAlternationsDifferentOrder2) {
+    TestTransformation(
+        "mouse/rat(s)/mice",
+        "^(?:mouse|rat(?:s)?|mice)$"
+    );
+}
+
+// Test: Optional in alternations with different order
+TEST_F(CucumberExpressionTransformationTest, TypeInOptional) {
+    TestTransformation(
+        "(a|b)",
+        "^(?:a\\|b)?$"
+    );
+}
+
+// Test: Optional in alternations with different order
+TEST_F(CucumberExpressionTransformationTest, TypeInOptional2) {
+    TestTransformation(
+        "c(a|b)d",
+        "^c(?:a\\|b)?d$"
     );
 }
 

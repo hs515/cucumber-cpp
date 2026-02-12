@@ -113,29 +113,25 @@ TEST_F(CucumberExpressionpressionErrorsTest, MultipleUnmatchedClosingParentheses
 
 // From: testdata/cucumber-expression/matching/does-not-allow-empty-optional.yaml
 // Test: Empty optional text - just parentheses with nothing inside
-// Note: Current implementation does not validate empty optional - test commented out
-// TEST_F(CucumberExpressionpressionErrorsTest, EmptyOptionalThrows) {
-//     TestThrowsInvalidArgument("three () mice");
-//     TestThrowsWithMessage("three () mice", "optional");
-// }
+TEST_F(CucumberExpressionpressionErrorsTest, EmptyOptionalThrows) {
+    TestThrowsInvalidArgument("three () mice");
+    TestThrowsWithMessage("three () mice", "optional");
+}
 
 // Empty optional at start
-// Note: Current implementation does not validate empty optional - test commented out
-// TEST_F(CucumberExpressionpressionErrorsTest, EmptyOptionalAtStartThrows) {
-//     TestThrowsInvalidArgument("()test");
-// }
+TEST_F(CucumberExpressionpressionErrorsTest, EmptyOptionalAtStartThrows) {
+    TestThrowsInvalidArgument("()test");
+}
 
 // Empty optional at end
-// Note: Current implementation does not validate empty optional - test commented out
-// TEST_F(CucumberExpressionpressionErrorsTest, EmptyOptionalAtEndThrows) {
-//     TestThrowsInvalidArgument("test()");
-// }
+TEST_F(CucumberExpressionpressionErrorsTest, EmptyOptionalAtEndThrows) {
+    TestThrowsInvalidArgument("test()");
+}
 
 // Multiple empty optionals
-// Note: Current implementation does not validate empty optional - test commented out
-// TEST_F(CucumberExpressionpressionErrorsTest, MultipleEmptyOptionalsThrow) {
-//     TestThrowsInvalidArgument("()()");
-// }
+TEST_F(CucumberExpressionpressionErrorsTest, MultipleEmptyOptionalsThrow) {
+    TestThrowsInvalidArgument("()()");
+}
 
 // ============================================================================
 // Parameter Type in Optional Tests

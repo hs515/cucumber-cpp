@@ -194,10 +194,9 @@ TEST_F(CucumberExpressionMatchingTest, MatchesDoublyEscapedSlash) {
 // ============================================================================
 
 // From: testdata/cucumber-expression/matching/matches-optional-in-alternation-1.yaml
-// Note: Complex pattern with optional followed by alternation - may not be fully supported
-// TEST_F(CucumberExpressionMatchingTest, MatchesOptionalInAlternation1) {
-//     TestMatches("{int} rat(s)/mouse/mice", "3 rats");
-// }
+TEST_F(CucumberExpressionMatchingTest, MatchesOptionalInAlternation1) {
+    TestMatches("{int} rat(s)/mouse/mice", "3 rats");
+}
 
 // From: testdata/cucumber-expression/matching/matches-optional-in-alternation-2.yaml
 TEST_F(CucumberExpressionMatchingTest, MatchesOptionalInAlternation2) {
