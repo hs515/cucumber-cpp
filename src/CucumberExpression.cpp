@@ -215,7 +215,7 @@ private:
                 current = c + current;
                 if (i == 0) break;
                 i--;
-                while (i >= 0 && depth > 0) {
+                while (depth > 0) {
                     char pc = expression[i];
                     current = pc + current;
                     if (pc == ')') depth++;
