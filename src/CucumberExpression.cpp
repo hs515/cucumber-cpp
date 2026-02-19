@@ -1,9 +1,11 @@
 #include <cucumber-cpp/internal/utils/CucumberExpression.hpp>
 
 #include <cctype>
+#include <fstream>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
+#include <nlohmann/json.hpp>
 
 namespace cucumber::internal {
 
@@ -36,9 +38,9 @@ namespace {
  * - {long}: same as {int}
  * - {} (anonymous): .*
  */
-inline const std::map<std::string, std::string, std::less<>>& getParameterTypes() {
+inline std::map<std::string, std::string, std::less<>> getBuiltInParameterTypes() {
     // Built-in parameter types mapping
-    static const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
+    std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = {
         {"int",         R"(-?\d+)"},
         {"float",       R"((?=.*\d.*)[-+]?\d*(?:\.(?=\d.*))?\d*(?:\d+[E][+-]?\d+)?)"},
         {"word",        R"([^\s]+)"},
@@ -51,6 +53,84 @@ inline const std::map<std::string, std::string, std::less<>>& getParameterTypes(
         {"long",        R"(-?\d+)"},
         {"", ".*"}  // anonymous parameter type
     };
+    return PARAMETER_TYPES;
+}
+
+/**
+ * getCustomParameterTypes - Load custom parameter types from external JSON file
+ * 
+ * Reads custom parameter type definitions from "custom_parameter_types.json" file
+ * in the current working directory. Custom parameter types allow users to extend
+ * Cucumber Expressions with domain-specific parameter matching patterns.
+ * 
+ * JSON File Format:
+ * The custom_parameter_types.json file should contain a JSON array of objects,
+ * where each object defines a custom parameter type with the following structure:
+ * 
+ * [
+ *   {
+ *     "name": "parameter_type_name",
+ *     "regexp": "regex_pattern_for_matching"
+ *   },
+ *   ...
+ * ]
+ * 
+ * Example:
+ * [
+ *   {
+ *     "name": "uuid",
+ *     "regexp": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+ *   },
+ *   {
+ *     "name": "email",
+ *     "regexp": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
+ *   }
+ * ]
+ */
+inline std::map<std::string, std::string, std::less<>> getCustomParameterTypes() {
+    std::map<std::string, std::string, std::less<>> PARAMETER_TYPES;
+    
+    // Try to read custom parameter types from JSON file
+    std::ifstream file("custom_parameter_types.json");
+    if (!file.is_open()) {
+        // File doesn't exist, return empty map
+        return PARAMETER_TYPES;
+    }
+    
+    try {
+        nlohmann::json j;
+        file >> j;
+        
+        // Validate that it's an array
+        if (!j.is_array()) {
+            return PARAMETER_TYPES;
+        }
+        
+        // Parse each parameter type definition
+        for (const auto& item : j) {
+            if (item.is_object() && item.contains("name") && item.contains("regexp")) {
+                std::string name = item["name"].get<std::string>();
+                std::string regexp = item["regexp"].get<std::string>();
+                PARAMETER_TYPES[name] = regexp;
+            }
+        }
+    } catch (const std::exception&) {
+        // If JSON parsing fails, return empty map
+        return PARAMETER_TYPES;
+    }
+    
+    return PARAMETER_TYPES;
+}
+
+inline const std::map<std::string, std::string, std::less<>>& getParameterTypes() {
+    // Merge built-in and custom parameter types
+    static const std::map<std::string, std::string, std::less<>> PARAMETER_TYPES = []() {
+        auto types = getBuiltInParameterTypes();
+        auto customTypes = getCustomParameterTypes();
+        // Custom types override built-in types if there's a name conflict
+        types.insert(customTypes.begin(), customTypes.end());
+        return types;
+    }();
     return PARAMETER_TYPES;
 }
 
